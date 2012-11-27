@@ -17,6 +17,8 @@ public class Sink {
   
   private static int t = 600; // milliseconds between beacons - sample only, assessment will use unknown values 
   
+  private static int start_time = 5000;
+
   // settings for sink A
   private static byte channel = 0; // channel 11
   private static byte panid = 0x11;
@@ -80,7 +82,7 @@ public class Sink {
     wait = Time.toTickSpan(Time.MILLISECS, t);
     
     
-    tstart.setAlarmBySpan(Time.toTickSpan(Time.SECONDS, 5)); //starts the protocol 5 seconds after constructing the assembly
+    tstart.setAlarmBySpan(Time.toTickSpan(Time.MILLISECS, start_time)); //starts the protocol after constructing the assembly
       
       
       

@@ -12,11 +12,13 @@ public class Sink2 {
   private static byte[] xmit;
   private static long   wait;
   static Radio radio = new Radio();
-  private static int n = 7; // number of beacons of sync phase - sample only, assessment will use unknown values
+  private static int n = 2; // number of beacons of sync phase - sample only, assessment will use unknown values
   private static int nc;
   
-  private static int t = 1308; // milliseconds between beacons - sample only, assessment will use unknown values 
+  private static int t = 700; // milliseconds between beacons - sample only, assessment will use unknown values 
   
+  private static int start_time = 5921;
+
   // settings for sink A
   private static byte channel = 1; // channel 11
   private static byte panid = 0x12;
@@ -80,7 +82,7 @@ public class Sink2 {
     wait = Time.toTickSpan(Time.MILLISECS, t);
     
     
-    tstart.setAlarmBySpan(Time.toTickSpan(Time.SECONDS, 5)); //starts the protocol 5 seconds after constructing the assembly
+    tstart.setAlarmBySpan(Time.toTickSpan(Time.MILLISECS, start_time)); //starts the protocol after constructing the assembly
       
       
       

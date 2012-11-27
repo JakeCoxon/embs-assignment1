@@ -1,0 +1,35 @@
+\documentclass{report}
+\usepackage{listings}
+\usepackage{hyperref}
+\usepackage{color}
+\usepackage[usenames,dvipsnames,svgnames,table]{xcolor}
+
+\lstset{
+basicstyle=\small\ttfamily,
+numbers=left,
+numberstyle=\tiny,
+frame=tb,
+columns=fullflexible,
+showstringspaces=false,
+keywordstyle=\color{Purple},
+commentstyle=\color{PineGreen},
+stringstyle=\bfseries\color{Blue},
+xleftmargin=-40pt,
+xrightmargin=-40pt,
+breaklines=true
+}
+
+\begin{document}
+\title{EMBS Assignment}
+\author{Jake Coxon}
+\maketitle
+
+\tableofcontents
+
+\section{Introduction}
+
+\section{Code}
+
+\lstinputlisting[language=Java]{src/embs/Source.java}
+
+\end{document}

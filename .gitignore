@@ -1,4 +1,10 @@
 *.sba
 *.sdx
 *.sxp
+*.toc
+*.pdf
+*.out
+*.log
+*.aux
 *.class
+.DS_Store
