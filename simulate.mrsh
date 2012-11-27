@@ -1,0 +1,9 @@
+mote-create 4
+moma-load logger-9.0
+
+0 moma-load source-1.0
+1 moma-load sink1-1.0
+2 moma-load sink2-1.0
+3 moma-load sink3-1.0
+
+
