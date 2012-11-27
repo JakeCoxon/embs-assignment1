@@ -65,30 +65,25 @@ public class Source {
     
     tsend0.setCallback(new TimerEvent(null){
       public void invoke(byte param, long time){
-        Source.timerCallback(param, time);
-      }
+        Source.timerCallback(param, time); }
     });
     tsend1.setCallback(new TimerEvent(null){
       public void invoke(byte param, long time){
-        Source.timerCallback(param, time);
-      }
+        Source.timerCallback(param, time); }
     });
     tsend2.setCallback(new TimerEvent(null){
       public void invoke(byte param, long time){
-        Source.timerCallback(param, time);
-      }
+        Source.timerCallback(param, time); }
     });
     
     // Radio handlers
     radio.setRxHandler(new DevCallback(null){
       public int invoke (int flags, byte[] data, int len, int info, long time) {
-        return Source.onReceive(flags, data, len, info, time);
-      }
+        return Source.onReceive(flags, data, len, info, time); }
     });
     radio.setTxHandler(new DevCallback(null) {
       public int invoke(int flags, byte[] data, int len, int info, long time) {
-        return Source.onSent(flags, data, len, info, time);
-      }
+        return Source.onSent(flags, data, len, info, time); }
     });
 
     // Open the default radio
@@ -136,8 +131,8 @@ public class Source {
     /*
      * If number is 1 then we know there is no more syncs but we don't have t
      */
-    if (number == 1) 
-    	pickNextSync(false, time);
+    if (number == 1)
+      pickNextSync(mote_id, false, time);
   }
   
   private static void secondBeacon(int mote_id, int number, long time) {
@@ -175,10 +170,10 @@ public class Source {
 
     prev_time = -1L;
     
-    pickNextSync(false, time);
+    pickNextSync(mote_id, false, time);
   }
   
-  private static void pickNextSync(boolean timedout, long time) {
+  private static void pickNextSync(int mote_id, boolean timedout, long time) {
 
     if (radio.getState() != Radio.S_STDBY)
       Source.stopRadioManually();
@@ -194,16 +189,16 @@ public class Source {
     boolean retry = timedout && time - prev_time < MAX_BEACON_TICKS 
     		                     && prev_time != -1 && prev_n != 1;
     
-    int next_id = retry ? sync_id :
-        TIMES[(sync_id + 2) % 3] == -1 ? (sync_id + 2) % 3 :
-        TIMES[(sync_id + 1) % 3] == -1 ? (sync_id + 1) % 3 :
-        TIMES[(sync_id + 0) % 3] == -1 ? (sync_id + 0) % 3 : -1;
+    int next_id = retry ? mote_id :
+        TIMES[(mote_id + 2) % 3] == -1 ? (mote_id + 2) % 3 :
+        TIMES[(mote_id + 1) % 3] == -1 ? (mote_id + 1) % 3 :
+        TIMES[(mote_id + 0) % 3] == -1 ? (mote_id + 0) % 3 : -1;
                   
     if (timedout) {
-      log_syncTimeout(sync_id, retry);
+      log_syncTimeout(mote_id, retry);
     }
     
-    sync_id = -1;
+    Source.sync_id = -1;
     if (!retry) prev_time = -1L;
     
     if (next_id > -1) {
@@ -213,7 +208,7 @@ public class Source {
       log_noQueue();
     }
   }
-  private static int onReceive (int flags, byte[] data, int len, int info, long time) {
+  private static int onReceive(int flags, byte[] data, int len, int info, long time) {
     
   	// We want to know if we manually shut off the radio, if so do nothing.
     if (data == null && manual_off) {
@@ -223,7 +218,7 @@ public class Source {
     // Timeout
     if (data == null) {
     	
-    	pickNextSync(true, time);
+      pickNextSync(sync_id, true, time);
     	
     }
     else { // Beacon
@@ -241,7 +236,7 @@ public class Source {
       
   }
 
-  protected static int onSent(int flags, byte[] data, int len, int info, long time) {
+  private static int onSent(int flags, byte[] data, int len, int info, long time) {
     
     byte mote_id = (byte) (data[3]-0x11);
     LED.setState(mote_id, (byte) (1 - LED.getState(mote_id)));
