@@ -7,4 +7,7 @@
 *.log
 *.aux
 *.class
+src/embs/Sink1.java
+src/embs/Sink2.java
+src/embs/Sink3.java
 .DS_Store

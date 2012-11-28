@@ -24,9 +24,23 @@ breaklines=true
 \author{Jake Coxon}
 \maketitle
 
-\tableofcontents
+\section{Development}
 
-\section{Introduction}
+The point of the source node is to transmit a packet during the reception phase of one of the three sink motes. The important part is during the synchronisation phase: for a given mote, any time a beacon is received with a payload $n$, there is $n t$ time until the beginning of the reception phase and then $12 t$ time until the beginning of the next sync phase. This can then be repeated indefinitely.
+
+The first part of the program in this case is calculating $t$, which can be done by finding the difference in time between two separate beacons from a mote. The beacons are not necessarily consecutive, so 
+\[t = \frac{t_2 - t_1}{n_1 - n_2}\]
+\[reception_{next} = t_2 + n_2 \frac{t_2 - t_1}{n_1 - n_2}\]
+\[phase_{next} = reception_{next} + 12 t\]
+
+If however $t_1$ is $1$ then this is the last beacon of the synchronisation phase and so it is impossible to find $t$ for this cycle. It is known that the next sync phase is $12 t$ time where $t \ge 500$ so the program should wait $12 \times 500ms$ and try again from the first beacon.
+
+The next part of the problem comes when trying to calculating these values for three motes consecutively since the three motes are on different channels. The method that is used is to wait for two beacons on one channel, immediately switch to a different channel and wait for the following beacons. Further, if the program has not received a beacon in $1500ms$ it should switch to a new channel. This prevents the program from wasting time trying to synchronise a mote that is in its sleep phase.
+
+Todo: 2 sync phases at once -> queue
+
+A timer is used to fire an event when the reception phase is predicted to happen, at this point either of the other two motes could be waiting to sync and the radio is in use. In my implementation I chose to override the sync by using the radio to transmit a packet and then return the radio back to receiving mode. This turned out to be okay in practice as switching channel and sending a packet only took a few 10s of milliseconds.
+
 
 \section{Code}
 

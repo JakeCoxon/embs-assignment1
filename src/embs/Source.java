@@ -21,6 +21,7 @@ public class Source {
   private static final int S_FINDN = 1;
   /** The program should not wait for any beacons for this mote */
   private static final int S_NONE = 2;
+  private static final int S_SUSPECTN1 = 3;
 
   private static final int SYNC_PHASE = 0x10;
   private static final int RECEP_PHASE = 0x20;
@@ -54,10 +55,12 @@ public class Source {
   private static final long[] MIN_SYNC_TIMES = new long[] {-1, -1, -1};
   /** The next absolute reception time of each mote **/ 
   private static final long[] RECEP_TIMES =    new long[] {-1, -1, -1};
-  /** The highest n value of each mote **/
+  /** The n value of each mote **/
   private static final  int[] NS =              new int[] {1, 1, 1};
   /** The synchronization state of each mote **/
   private static final  int[] SYNC_STATES =     new int[] {S_NORMAL, S_NORMAL, S_NORMAL};
+  
+  private static final long[] PREV_SYNCS = new long[] {-1, -1, -1};
   
   /** The absolute time of the previous beacon **/
   private static long prev_time = -1L;
@@ -143,34 +146,41 @@ public class Source {
     log_firstBeacon(mote_id, number);
 
     // Record the highest number of n we have found
-    NS[mote_id] = number > NS[mote_id] ? number : NS[mote_id];
+    // TODO: Don't need this
+    //NS[mote_id] = number > NS[mote_id] ? number : NS[mote_id];
     
-    /*
-     * We found n, we should be sure that this is the correct
-     * value
-     */
-    if (SYNC_STATES[mote_id] == S_FINDN)
-    {
+    
+    if (SYNC_STATES[mote_id] == S_FINDN) {
+      // We found n, if we got this far we are probably sure that this
+      // is the correct value
+      NS[mote_id] = number;
       log_foundN(mote_id, number);
       
       SYNC_STATES[mote_id] = S_NONE;
     }
     
-    prev_time = time;
-    prev_n = number;
-    
     /*
      * If number is 1 then we know there is no more syncs but we don't know t
      */
     if (number == 1) {
+
+      if (SYNC_STATES[mote_id] == S_NORMAL) {
+        // Set the state to look for a n = 1
+        SYNC_STATES[mote_id] = S_SUSPECTN1;
+      }
+      
       // There's no point trying to sync again until it has completed a new cycle
+      // TODO: Double check this
       long time_diff = TIMES[mote_id] != -1 ? TIMES[mote_id] : MIN_BEACON_TICKS;
       
       MIN_SYNC_TIMES[mote_id] = time + 11 * time_diff - PADDING_TICKS;
       startTimer(mote_id, SYNC_PHASE, MIN_SYNC_TIMES[mote_id]);
-      
+
       pickNextSync(mote_id, false);
     }
+    
+    PREV_SYNCS[mote_id] = time;
+    prev_n = number;
   }
   
   /**
@@ -190,21 +200,32 @@ public class Source {
     
     
     
+    
+    
+    long time_diff = TIMES[mote_id] = time - PREV_SYNCS[mote_id];
+    
+    if (SYNC_STATES[mote_id] == S_SUSPECTN1 && number == 1) {
+      // If we suspected that n=1 and it was then calculate t from
+      // the time difference across a whole cycle
+      SYNC_STATES[mote_id] = S_NONE;
+      time_diff = TIMES[mote_id] /= 12;
+
+      NS[mote_id] = 1;
+      log_foundN(mote_id, 1);
+    }
+    else {
+      // Divide this up by the difference in n. Usually this will just
+      // be 1 but there's a chance we missed a beacon (due to transmitting
+      // a packet)
+      time_diff /= prev_n - number;
+    }
+    
     /*
      * Record time difference (t) and set up the next sync time for 
      * this mote. Start the timer for reception phase in n*t time
      * but add 1% of t to make sure we are actually in the time frame.
      * (Sometimes the timer starts 0.006ms before the time frame)
      */
-    
-    long time_diff = TIMES[mote_id] = time - prev_time;
-    
-    // Divide this up by the difference in n. Usually this will just
-    // be 1 but there's a small chance we missed a beacon while we
-    // were sending one.
-    time_diff /= prev_n - number;
-    
-    
     long reception_time = RECEP_TIMES[mote_id] = time + number * time_diff;
     SYNC_TIMES[mote_id] = reception_time + 11 * time_diff;
     
@@ -212,7 +233,7 @@ public class Source {
     
     startTimer(mote_id, RECEP_PHASE, reception_time + PADDING_TICKS);
 
-    prev_time = -1L;
+    PREV_SYNCS[mote_id] = -1L;
     pickNextSync(mote_id, false);
   }
   
@@ -237,8 +258,8 @@ public class Source {
      *  Otherwise pick another mote that needs to be synced, with this
      *  mote as a last resort.
      */
-    boolean retry = timedout && time - prev_time < MAX_BEACON_TICKS 
-    		                     && prev_time != -1 && prev_n != 1;
+    boolean retry = timedout && time - PREV_SYNCS[mote_id] < MAX_BEACON_TICKS 
+    		                     && PREV_SYNCS[mote_id] != -1 && prev_n != 1;
     
     // Check that the current time is greater than the min sync time
     boolean time2 = time > MIN_SYNC_TIMES[(mote_id + 2) % 3];
@@ -254,11 +275,24 @@ public class Source {
       log_syncTimeout(mote_id, retry);
     }
     
-    Source.sync_id = -1;
     
-    /* Set prev_time to -1 unless we are retrying the same mote
+    /* Set prev time to -1 unless we are retrying
      * This means we can still record 2 beacons after a timeout */
-    if (!retry) prev_time = -1L;
+    // TODO: check this after moving to PREV_SYNCS
+    if (!retry && SYNC_STATES[mote_id] != S_SUSPECTN1) 
+      PREV_SYNCS[mote_id] = -1L;
+    
+    if (mote_id != sync_id) {
+      if (SYNC_STATES[mote_id] == S_SUSPECTN1 && next_id != -1) {
+        /* If we were waiting for n=1 then cancel that because
+         * we will probably miss it */
+        SYNC_STATES[mote_id] = S_NORMAL;
+        Logger.appendString(csr.s2b("Cancel n = 1!"));
+        Logger.flush(Mote.WARN);
+      }
+    }
+
+    Source.sync_id = -1;
     
     // Update the radio 
     if (next_id > -1)
@@ -285,7 +319,7 @@ public class Source {
       int number = data[11];
 	  	
       // Record the state of the beacon
-      if (prev_time == -1)
+      if (PREV_SYNCS[sync_id] == -1)
         firstBeacon(sync_id, number, time);
       else
         secondBeacon(sync_id, number, time);
@@ -302,8 +336,6 @@ public class Source {
     LED.setState(mote_id, (byte) (1 - LED.getState(mote_id)));
     
     stopRadioManually();
-    
-    log_sentPacket(mote_id);
     
     // Switch back the radio because we are in sync phase
     if (shouldWaitForSync())
@@ -327,6 +359,7 @@ public class Source {
     t.setAlarmTime(abs_time);
   }
 
+  
   /** Called when a timer has fired */
   private static void timerCallback(byte param, long time) {
     if ((param & 0xF0) == SYNC_PHASE)
@@ -334,6 +367,7 @@ public class Source {
     else if ((param & 0xF0) == RECEP_PHASE)
       receptionPhase((byte) (param & 0xF), time);
   }
+
   
   /** Starts syncing after the timer has run */
   private static void startSyncPhaseFromTimer(byte param, long time) {
@@ -348,6 +382,7 @@ public class Source {
        * phase otherwise
        */
       
+      // TODO: check this
       if (NS[mote_id] == 2 && NS[sync_id] == 1) {
         stopRadioManually();
         setRadioForSync(mote_id);
@@ -358,15 +393,21 @@ public class Source {
       
       /*
        * We might have been expecting to get n here, in which case
-       * we will probably miss n. Just do a normal sync instead
+       * we will probably miss n because we are queueing it for later. 
+       * Just do a normal sync instead
        */
-      if (SYNC_STATES[mote_id] == S_FINDN) 
+      if (SYNC_STATES[mote_id] == S_FINDN || SYNC_STATES[mote_id] == S_SUSPECTN1) 
         SYNC_STATES[mote_id] = S_NORMAL;
       
       TIMES[mote_id] = QUEUE;
       
       return;
     }
+    
+    Logger.appendString(csr.s2b("Starting sync mote"));
+    Logger.appendInt(mote_id);
+    Logger.appendString(csr.s2b(" from timer"));
+    Logger.flush(Mote.WARN);
     
     setRadioForSync(mote_id);
   }
@@ -378,11 +419,11 @@ public class Source {
     if (shouldWaitForSync()) {
       // I think sending a packet should override sync phase
       
-      if (SYNC_STATES[sync_id] == S_FINDN) {
+      if (SYNC_STATES[sync_id] == S_FINDN || SYNC_STATES[sync_id] == S_SUSPECTN1) {
         /*
          * The syncing phase is waiting for n, if it misses the first beacon
          * then n will be WRONG which will mess up the reception phase
-         * There is a chance here that switching to transmit (~50ms) will
+         * There is a chance here that switching to transmit will
          * miss the sync beacon. So I think we should try and find n next
          * time instead.
          */
@@ -400,6 +441,8 @@ public class Source {
     int mote_id = param;
     
     log_recepPhase(mote_id, RECEP_TIMES[mote_id], time);
+    
+    log_sendPacket(mote_id);
     
     byte pan_id = PANIDS[mote_id];
       
@@ -421,6 +464,7 @@ public class Source {
       long next_recep_time = RECEP_TIMES[mote_id] + (11 + NS[mote_id]) * TIMES[mote_id];
 
       log_startRecepTimer(mote_id, next_recep_time);
+      
       RECEP_TIMES[mote_id] = next_recep_time;
       
       startTimer(mote_id, RECEP_PHASE, next_recep_time + PADDING_TICKS);
@@ -517,10 +561,9 @@ public class Source {
     Logger.flush(Mote.WARN);
   }
   
-  private static void log_sentPacket(int mote_id) {
-    Logger.appendString(csr.s2b("** PACKET SENT TO MOTE"));
+  private static void log_sendPacket(int mote_id) {
+    Logger.appendString(csr.s2b("Sending packet to mote"));
     Logger.appendInt(mote_id);
-    Logger.appendString(csr.s2b(" **"));
     Logger.flush(Mote.WARN);
   }
   

@@ -1,4 +1,4 @@
-
+#!/usr/bin/ruby
 file = IO.read("src/embs/Sink.java")
 
 sinks_choice = []
@@ -37,6 +37,11 @@ sinks_choice << [
 {:id=>1, :channel=>0, :panid=>11, :n=>2, :t=>500, :start=>300},
 {:id=>2, :channel=>1, :panid=>12, :n=>2, :t=>500, :start=>300},
 {:id=>3, :channel=>2, :panid=>13, :n=>2, :t=>500, :start=>300}]
+
+sinks_choice << [
+{:id=>1, :channel=>0, :panid=>11, :n=>7, :t=>1308, :start=>300},
+{:id=>2, :channel=>1, :panid=>12, :n=>1, :t=>1500, :start=>300},
+{:id=>3, :channel=>2, :panid=>13, :n=>2, :t=>685, :start=>300}]
 
 
 sinks = nil
