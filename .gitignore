@@ -2,7 +2,6 @@
 *.sdx
 *.sxp
 *.toc
-*.pdf
 *.out
 *.log
 *.aux

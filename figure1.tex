@@ -1,0 +1,88 @@
+\newcommand{\drawsleep}[2]{%
+  \filldraw[fill=white] (#1, -0.5) rectangle ({1+#2}, 0.5)
+    node[midway, align=center, text width=7cm]{sleep};
+}
+\newcommand{\drawrecep}[1]{%
+  \filldraw[fill=gray] (#1, -0.5) rectangle ({#1+1}, 0.5) 
+    node[midway, align=center, text width=7cm]{};
+}
+\newcommand{\drawbeacons}[2]{%
+  \foreach \x in {#1,...,#2}{
+    \pgfmathtruncatemacro\n{int(#1+\x)}
+    \path node[c](b\n) at (\x,0) {};
+  }
+}
+
+\begin{figure}[!h]
+  \centering
+  \begin{tikzpicture}[scale=0.6]
+
+    \tikzstyle{s} = [draw,minimum width=1, minimum height=1, node distance=1, inner sep=0, outer sep=0]
+    \tikzstyle{c} = [draw,fill,circle,inner sep=0.3mm]
+    \draw (-1,-0.5) -- (21,-0.5);
+    \draw (-1,0.5) -- (21,0.5);
+    %\node (1,0) [draw] {asd};
+    %\draw
+    %  node[s] {}
+    %  node[s] {};
+
+    \foreach \x in {0,...,20}{
+      \draw [gray] (\x,-0.5) -- (\x,0.5);
+    }
+    \foreach \x in {0,...,20}{
+      \pgfmathtruncatemacro\n{int(\x)}
+      \path node(p\n) [inner sep=0,outer sep=0] at (\x,0) {};
+      \path node(pb\n) [below=0.3cm of p\n] {};
+    }
+
+    %\draw node[c] at (0,0) {}
+    %      node[c] at (1cm,0) {}
+    %      node[c] at (2cm,0) {};
+    \drawbeacons{0}{4}
+
+    \drawrecep{5}
+    \drawsleep{6}{12}
+    \drawrecep{16}
+    %\drawsleep{17}{17}
+
+    %\node (n1) [below=0.1cm of b1] {};
+    \node (n1a) [below=of pb1] {$n_1$}
+      edge [->] (pb1);
+    %\node (n2) [below=0.1cm of b2] {};
+    \node (n2a) [below=of pb2] {$n_2$}
+      edge [->] (pb2);
+
+    \draw[decorate,decoration={brace,mirror}] (pb2) -- (pb5)
+      node[pos=0.5,below=0.2] {\small$t_2 + n_2 t$};
+
+    %\draw [->] (n1a) -- (pb1);
+    %\draw [->] (n2a) -- (pb2);
+    %\node (node) [below=0.1cm of n1a] {$n_1$};
+    %\node (node) [below=0.1cm of n2a] {$n_2$};
+
+    %\draw (0,-0.8) -- (0,0.8)
+    %        node[s] at (0.5,0) {h}
+    %        node[c] {};
+    %        \shift{1cm,0cm}
+
+    %\draw (0,-0.8) -- (0,0.8)
+    %        node[s] at (0.5,0) {h}
+    %        node[c] {};
+    %\draw [xshift=1cm] (0,-0.8) -- (0,0.8)
+    %        node[s] at (0.5,0) {h};
+
+
+    %\draw [xshift=5.5cm] (0,-0.8) -- (0,0.8)
+    %        node[s,minimum width=5pt] at (0.5,0) {h};
+
+    % [xshift=1cm] -- (1,-0.5) [s] -> (1,0.5);
+    %\draw (1,-0.5)   [->] (1,0.8) [xshift=1cm] (1,-0.5) [s] -> (1,0.5);
+    %\draw (2,-0.5)   [->] (2,0.8) [xshift=1cm] (2,-0.5) [s] -> (2,0.5);
+    %\draw (0,0) node[s] {$ 0 $} node[above=3pt] {$  asd $};
+    %\draw (1,0) node[s] {$ 0 $} node[above=3pt] {$  asd $};
+    %\draw (2,0) node[s] {$ 0 $} node[above=3pt] {$  asd $};
+    %\draw (3,0) node[s] {$ 0 $} node[above=3pt] {$  asd $};
+
+  \end{tikzpicture}
+  \caption{Timeline}
+\end{figure}
