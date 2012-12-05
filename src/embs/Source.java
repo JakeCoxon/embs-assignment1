@@ -156,7 +156,7 @@ public class Source {
       long min_sync_time = time + 11 * MIN_BEACON_TICKS;
       startTimer(mote_id, SYNC_PHASE, min_sync_time, -PADDING_TICKS);
       
-      QUEUE[mote_id] = 0; // UNQUEUE
+      QUEUE[mote_id] = 0; // Unqueue
 
       pickNextSync(mote_id, false);
     }
