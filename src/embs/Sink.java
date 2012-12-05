@@ -23,6 +23,9 @@ public class Sink {
   private static byte channel = 0; // channel 11
   private static byte panid = 0x11;
   private static byte address = 0x11;
+  private static int num = 0;
+  private static Timer rend;
+  private static boolean inReceivePeriod;
 
   static {
     // Open the default radio
@@ -76,6 +79,13 @@ public class Sink {
         Sink.restart(param, time);
       }
     });
+    
+    rend = new Timer();
+    rend.setCallback(new TimerEvent(null) {
+      public void invoke(byte param, long time) {
+        Sink.stopReceivePeriod(param, time);
+      }
+    });
 
         
     // Convert the periodic delay from ms to platform ticks
@@ -84,19 +94,14 @@ public class Sink {
     
     tstart.setAlarmBySpan(Time.toTickSpan(Time.MILLISECS, start_time)); //starts the protocol after constructing the assembly
       
-      
+    radio.startRx(Device.ASAP, 0, Time.currentTicks() + 0x7FFFFFFF);
       
   }
 
   // Called when a frame is received or at the end of a reception period 
   private static int onReceive (int flags, byte[] data, int len, int info, long time) {
-    if (data == null) { // marks end of reception period
-        // turn green LED off 
-      LED.setState((byte)1, (byte)0);
-      
-      //set alarm to restart protocol
-      tstart.setAlarmBySpan(10*wait);
-                
+    if (data == null) { 
+      radio.startRx(Device.ASAP, 0, Time.currentTicks() + 0x7FFFFFFF);     
       return 0;
     }
 
@@ -111,12 +116,30 @@ public class Sink {
     }
     light=!light;
     
-    Logger.appendString(csr.s2b("**** Recieved data: "));
-    Logger.appendByte(data[11]);
-    Logger.appendString(csr.s2b(" ****"));
-    Logger.flush(Mote.WARN);
+    if (inReceivePeriod) {
+      Logger.appendString(csr.s2b("**** Recieved packet on mote0 at "));
+      Logger.appendLong(Time.fromTickSpan(Time.MILLISECS, time));
+      Logger.appendString(csr.s2b("ms with "));
+      Logger.appendInt(info & 0xFF);
+      Logger.appendString(csr.s2b(" RSSI ****"));
+      Logger.flush(Mote.WARN);
+    } else {
+      Logger.appendString(csr.s2b("**** INCORRECT packet on mote0 at "));
+      Logger.appendLong(Time.fromTickSpan(Time.MILLISECS, time));
+      Logger.appendString(csr.s2b("ms ****"));
+      Logger.flush(Mote.WARN);
+    }
     return 0;
       
+  }
+
+
+  protected static void stopReceivePeriod(byte param, long time) {
+    inReceivePeriod = false;
+    // turn green LED off
+    LED.setState((byte) 1, (byte) 0);
+    // set alarm to restart protocol
+    tstart.setAlarmBySpan(10 * wait);
   }
 
 
@@ -133,9 +156,11 @@ public class Sink {
     }
     else{
       //start reception phase
-      radio.startRx(Device.ASAP, 0, Time.currentTicks()+wait);
+      //radio.startRx(Device.ASAP, 0, Time.currentTicks()+wait);
       // turn green LED on 
+      inReceivePeriod = true;
       LED.setState((byte)1, (byte)1);
+      rend.setAlarmBySpan(wait);
       
     }
       

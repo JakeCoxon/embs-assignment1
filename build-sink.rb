@@ -48,6 +48,11 @@ sinks_choice << [
 {:id=>2, :channel=>1, :panid=>12, :n=>1, :t=>1000, :start=>300},
 {:id=>3, :channel=>2, :panid=>13, :n=>7, :t=>1000, :start=>300}]
 
+sinks_choice << [
+{:id=>1, :channel=>0, :panid=>11, :n=>8, :t=>1000, :start=>300},
+{:id=>2, :channel=>1, :panid=>12, :n=>1, :t=>900, :start=>300},
+{:id=>3, :channel=>2, :panid=>13, :n=>1, :t=>800, :start=>300}]
+
 
 sinks = nil
 if id = ARGV[0] and id[/^[0-9]+$/] then
@@ -66,6 +71,7 @@ sinks.each do |a|
 	newfile = file.dup
 	newfile = newfile.gsub(/(?<=public class Sink)/, a[:id].to_s)
 	newfile = newfile.gsub(/Sink\./, "Sink#{a[:id]}.")
+	newfile = newfile.gsub(/mote0/, "mote#{a[:channel]}")
 	newfile = newfile.gsub(/(?<=private static int n = )([0-9]+)/, a[:n].to_s)
 	newfile = newfile.gsub(/(?<=private static int t = )([0-9]+)/, a[:t].to_s)
 	

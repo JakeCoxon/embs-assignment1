@@ -27,6 +27,8 @@ breaklines=true
 \newcommand{\reception}[1]{\text{reception}_{#1}}
 \newcommand\receptiont[1]{\text{reception}_\text{#1}}
 \newcommand\phaset[1]{\text{phase}_\text{#1}}
+\newcommand{\ms}{\, \mathrm{ms}}
+\newcommand{\nmax}{n_{\text{max}}}
 
 \begin{document}
 \title{EMBS Assignment}
@@ -43,28 +45,29 @@ The first part of the program in this case is calculating $t$, which can be done
 \[\receptiont{next} = t_2 + n_2 t\]
 \[\phaset{next} = \receptiont{next} + 11 t\]
 
-If however $n_1$ is $1$ then this is the last beacon of the synchronisation phase and so it is impossible to find $t$ during this cycle. Fortunately it is known that the next sync phase is $12 t$ time where $t \ge 500$ so the program should wait $12 \times 500ms$ and try again.
+If however $n_1$ is $1$ then this is the last beacon of the synchronisation phase and so it is impossible to find $t$ during this cycle. Fortunately it is known that the next sync phase is $12 t$ time where $t \ge 500$ so the program should wait $12 \times 500\ms$ and try again.
 
 The next part of the problem comes when trying to calculating these values for three motes in parallel since all motes are on different channels. 
 
-The program tracks a state for all motes; initially `waiting-to-sync'. The program will arbitrarily start with $mote0$ and wait for two beacons. Following this, the state is set to `successfully-synced', the reception phase is calculated and a timer is set to fire at the reception phase.
+The program tracks a state for all motes; initially `waiting-to-sync'. The program will arbitrarily start with Sink $A$ and wait for two beacons. Following this, the state is set to `successfully-synced', the reception phase is calculated and a timer is set to fire at the reception phase.
 
-If the program is waiting to sync and does not receive a beacon in $1500ms$ it should switch to a new mote which has state `waiting-to-sync'. This is because the program does not know if the mote is in synchronisation phase and therefore could be waiting for a beacon for up to $11 \times 1500ms$
+If the program is waiting to sync and does not receive a beacon in $1500\ms$ it should switch to a new mote which has state `waiting-to-sync'. This is because the program does not know if the mote is in synchronisation phase and therefore could be waiting for a beacon for up to $11 \times 1500\ms$.
 
-When the reception-phase timer is fired for a mote, either of the other two motes could be waiting to sync and the radio will be in use. The program will override the sync by using the radio to transmit a packet to this mote and then return the radio back to receiving mode. 
+Once a packet is transmitted during the reception phase, it is known that the the next sync phase for this mote is at $11 t$ time, so the timer can be started for this time and the whole process can be repeated. If this timer fires and the program is already trying to sync a mote then the new mote is `queued' by setting the state to `waiting-to-sync'.
 
-Once a packet is transmitted during the reception phase, it is known that the the next sync phase for this mote is at $11 t$ time, so the timer can be started for this time and the whole process can be repeated. If this timer fires and the program is already trying to sync a mote then the new mote is `queued' by setting the state to `waiting-to-sync'
-
-There is an optimisation that the program performs. After the first reception phase of a mote, the program can calculate the beginning of the next synchronization phase. Therefore the program knows whatever payload it receives will be $n_{max}$ (The given $n$ for the mote). Subsequently, the next reception phase can be calculated
-\[\reception{i+1} = \reception{i} + (n_{\text{max}} + 11) t\]
+Infact, the program knows whatever payload it receives will be $\nmax$ (The given $n$ for the mote). Subsequently, the next reception phase can be calculated
+\[\reception{i+1} = \reception{i} + (\nmax + 11) t\]
 This mean the program does not have to waste time going to the syncing phase every cycle (although we may like it to after some amount of time.)
 
-The final problem to consider is when $n = 1$. This is a problem because there will not be two beacons in a single cycle and secondly the program does not know for sure that $n = 1$. This can be alleviated by waiting for the first beacon in the following cycle and calculating $t$. However, the program could potentially have to wait for $12000ms$\footnote{Because $500ms \leq n \leq 1500ms$, the next reception phase could be anywhere between $12 \times 1500ms = 6000ms$ and $12 \times 500ms = 18000ms$} \emph{without switching channels} else the program could miss a beacon where $n = 2$
+The final problem to consider is when $\nmax = 1$. This is a problem because there will not be two beacons in a single cycle and secondly the program does not know for sure that $\nmax = 1$. This can be alleviated by waiting for the first beacon in the following cycle and calculating $t$. However, the program could potentially have to wait for $12000\ms$\footnote{Because $500\ms \leq n \leq 1500\ms$, the next reception phase could be anywhere between $12 \times 1500\ms = 6000\ms$ and $12 \times 500\ms = 18000\ms$} \emph{without switching channels} else the program could miss a beacon where $n = 2$
 
-\input{figure1}
+\input{figure_testdata}
 
-\section{Code}
 
-\lstinputlisting[language=Java]{src/embs/Source.java}
+\input{figure_timeline}
+
+%\section{Code}
+
+%\lstinputlisting[language=Java]{src/embs/Source.java}
 
 \end{document}
