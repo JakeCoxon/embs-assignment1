@@ -1,0 +1,73 @@
+\documentclass{report}
+\usepackage{amsmath}
+\usepackage{listings}
+\usepackage{hyperref}
+\usepackage[usenames,dvipsnames,svgnames,table]{xcolor}
+\usepackage{tikz}
+\usepackage{color}
+
+\usetikzlibrary{arrows,calc,positioning,decorations.pathreplacing}
+\usepgflibrary{shapes.geometric}
+
+\lstset{
+basicstyle=\small\ttfamily,
+numbers=left,
+numberstyle=\tiny,
+frame=tb,
+columns=fullflexible,
+showstringspaces=false,
+keywordstyle=\color{Purple},
+commentstyle=\color{PineGreen},
+stringstyle=\bfseries\color{Blue},
+xleftmargin=-40pt,
+xrightmargin=-40pt,
+breaklines=true
+}
+
+\newcommand{\reception}[1]{\text{reception}_{#1}}
+\newcommand\receptiont[1]{\text{reception}_\text{#1}}
+\newcommand\phaset[1]{\text{phase}_\text{#1}}
+\newcommand{\ms}{\, \mathrm{ms}}
+\newcommand{\nmax}{n_{\text{max}}}
+
+\begin{document}
+\title{EMBS Assignment}
+\author{Jake Coxon}
+\maketitle
+
+\section{Development}
+
+todo: how did i come to these design decisions
+The point of the source node is to transmit a packet during the reception phase of one of the three sink motes. For a given mote, any time a beacon is received with a payload $n$, there is $n t$ time until the beginning of the reception phase and then $12 t$ time until the beginning of the next sync phase. This can then be repeated indefinitely.
+
+The first part of the program in this case is calculating $t$, which can be done by finding the difference in time between two separate beacons from a mote ($t_1$ and $t_2$). The beacons are not necessarily consecutive, so 
+\[t = \frac{t_2 - t_1}{n_1 - n_2}\]
+\[\receptiont{next} = t_2 + n_2 t\]
+\[\phaset{next} = \receptiont{next} + 11 t\]
+
+If however $n_1$ is $1$ then this is the last beacon of the synchronisation phase and so it is impossible to find $t$ during this cycle. Fortunately it is known that the next sync phase is $12 t$ time where $t \ge 500$ so the program should wait $12 \times 500\ms$ and try again.
+
+The next part of the problem comes when trying to calculating these values for three motes in parallel since all motes are on different channels. 
+
+The program tracks a state for all motes; initially `waiting-to-sync'. The program will arbitrarily start with Sink $A$ and wait for two beacons. Following this, the state is set to `successfully-synced', the reception phase is calculated and a timer is set to fire at the reception phase.
+
+If the program is waiting to sync and does not receive a beacon in $1500\ms$ it should switch to a new mote which has state `waiting-to-sync'. This is because the program does not know if the mote is in synchronisation phase and therefore could be waiting for a beacon for up to $11 \times 1500\ms$.
+
+Once a packet is transmitted during the reception phase, it is known that the the next sync phase for this mote is at $11 t$ time, so the timer can be started for this time and the whole process can be repeated. If this timer fires and the program is already trying to sync a mote then the new mote is `queued' by setting the state to `waiting-to-sync'.
+
+Infact, the program knows whatever payload it receives will be $\nmax$ (The given $n$ for the mote). Subsequently, the next reception phase can be calculated
+\[\reception{i+1} = \reception{i} + (\nmax + 11) t\]
+This mean the program does not have to waste time going to the syncing phase every cycle (although we may like it to after some amount of time.)
+
+The final problem to consider is when $\nmax = 1$. This is a problem because there will not be two beacons in a single cycle and secondly the program does not know for sure that $\nmax = 1$. This can be alleviated by waiting for the first beacon in the following cycle and calculating $t$. However, the program could potentially have to wait for $12000\ms$\footnote{Because $500\ms \leq n \leq 1500\ms$, the next reception phase could be anywhere between $12 \times 1500\ms = 6000\ms$ and $12 \times 500\ms = 18000\ms$} \emph{without switching channels} else the program could miss a beacon where $n = 2$
+
+\input{figure_testdata}
+
+
+\input{figure_timeline}
+
+%\section{Code}
+
+%\lstinputlisting[language=Java]{src/embs/Source.java}
+
+\end{document}

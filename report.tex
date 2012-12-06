@@ -1,6 +1,5 @@
 \documentclass{article}
 \usepackage{amsmath}
-\usepackage{listings}
 \usepackage{hyperref}
 \usepackage[usenames,dvipsnames,svgnames,table]{xcolor}
 \usepackage{tikz}
@@ -9,21 +8,6 @@
 \usetikzlibrary{arrows,calc,positioning,decorations.pathreplacing}
 \usepgflibrary{shapes.geometric}
 
-\lstset{
-basicstyle=\small\ttfamily,
-numbers=left,
-numberstyle=\tiny,
-frame=tb,
-columns=fullflexible,
-showstringspaces=false,
-keywordstyle=\color{Purple},
-commentstyle=\color{PineGreen},
-stringstyle=\bfseries\color{Blue},
-xleftmargin=-40pt,
-xrightmargin=-40pt,
-breaklines=true
-}
-
 \newcommand{\reception}[1]{\text{reception}_{#1}}
 \newcommand\receptiont[1]{\text{reception}_\text{#1}}
 \newcommand\phaset[1]{\text{phase}_\text{#1}}
@@ -31,8 +15,8 @@ breaklines=true
 \newcommand{\nmax}{n_{\text{max}}}
 
 \begin{document}
-\title{EMBS Assignment}
-\author{Jake Coxon}
+\title{Embedded Systems Design \& Implementation Assignment}
+\author{Exam No. Y6381114}
 \maketitle
 
 \section{Design and Implementation}
@@ -62,11 +46,5 @@ Testing arbitrary values helped me to find corner cases that I may have otherwis
 It was important that the script run with an index would generate the same $t$ and $n$ values. This is so I could iteratively improve the algorithm and retest the same $t$ and $n$ values to see if the number of successful packets increased.
 
 \input{figure_testdata}
-
-
-
-%\section{Code}
-
-%\lstinputlisting[language=Java]{src/embs/Source.java}
 
 \end{document}

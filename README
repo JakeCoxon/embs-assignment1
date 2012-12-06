@@ -1,0 +1,8 @@
+Code for Source mote is in src/embs/Source.java
+Code for Sink motes is in src/embs/Sink.java
+
+To generate sink motes run `ruby build-sink.rb`
+To build source mote run `./build-source.sh`
+
+Tests can be run using `./test-all.sh` or the currently built motes can be
+run using `./test.sh`

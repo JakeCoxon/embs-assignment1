@@ -25,8 +25,9 @@ public class Source {
 
   private static final long MAX_BEACON_TICKS = Time.toTickSpan(Time.MILLISECS, 1500);
   private static final long MIN_BEACON_TICKS = Time.toTickSpan(Time.MILLISECS, 500);
-  private static final long PADDING_TICKS =    Time.toTickSpan(Time.MILLISECS, 20);
+  private static final long PADDING_TICKS    = Time.toTickSpan(Time.MILLISECS, 20);
 
+  /** The transmit array */
   private static final byte[] xmit;
   private static final byte my_address = 0x10;
 
@@ -54,7 +55,7 @@ public class Source {
   private static final long[] PREV_TIMES =    new long[] {-1, -1, -1};
   /** The n value for the previous beacon **/
   private static final  int[] PREV_N =        new int[] {-1,-1, -1};
-  /** Whether a mote wants to be synced **/
+  /** Whether a mote wants to be synced - it's a fake queue **/
   private static final  int[] QUEUE =         new int[] {1, 1, 1};
   /** The RSSI for each mote **/
   private static final  int[] RSSI =          new int[] {0, 0, 0};
@@ -109,6 +110,7 @@ public class Source {
     radio.open(Radio.DID, null, 0, 0);
     radio.setShortAddr(my_address);
     
+    LED.setState((byte)0, (byte)1); 
     setRadioForSync(MOTE0);
       
   }
@@ -141,7 +143,7 @@ public class Source {
     /*
      * If first beacon has n=1 then we've either missed the rest of the sync phase
      * or max_n=1, but either way we know there won't be another sync phase for
-     * at least another 11*500ms but also we can switch into find-n state
+     * at least another 12*500ms but also we can switch into find-n state
      * which will read the first beacon in the next phase to find n and t - this will
      * get reset if the radio changes channel
      */
@@ -153,7 +155,7 @@ public class Source {
       
       // There's no point trying to sync again until it has completed a new cycle
       
-      long min_sync_time = time + 11 * MIN_BEACON_TICKS;
+      long min_sync_time = time + 12 * MIN_BEACON_TICKS;
       startTimer(mote_id, SYNC_PHASE, min_sync_time, -PADDING_TICKS);
       
       QUEUE[mote_id] = 0; // Unqueue
@@ -161,6 +163,7 @@ public class Source {
       pickNextSync(mote_id, false);
     }
     
+    // Record values
     PREV_TIMES[mote_id] = time;
     PREV_N[mote_id] = number;
   }
@@ -198,8 +201,8 @@ public class Source {
       /* 
        * Completed 1 normal sync, so next time try and find n
        */
-      SYNC_STATES[mote_id] = S_FINDN;
       log_findN(mote_id);
+      SYNC_STATES[mote_id] = S_FINDN;
     }
     else if (SYNC_STATES[mote_id] == S_FINDN) {
       /*
@@ -261,7 +264,7 @@ public class Source {
         QUEUE[(mote_id + 2) % 3] == 1 ? (mote_id + 2) % 3 :
         QUEUE[(mote_id + 1) % 3] == 1 ? (mote_id + 1) % 3 :
         QUEUE[(mote_id + 0) % 3] == 1 ? (mote_id + 0) % 3 : -1;
-                  
+    
     if (timedout) {
       log_syncTimeout(mote_id, retry);
     }
@@ -437,11 +440,6 @@ public class Source {
       stopRadioManually();
     }
     
-    /*
-     * RECEP_TIMES[mote_id] is the time the timer should have started,
-     * the timer may have been fired a bit late so don't use time.
-     */
-    
     log_recepPhase(mote_id, reception_time, time);
     
     // Out of 255: 0b0000000011111111
@@ -452,8 +450,36 @@ public class Source {
     
     log_sendPacket(mote_id, 63-power);
     
-    byte pan_id = PANIDS[mote_id];
+    doTransmit(mote_id, power);
+
+    /*
+     * If we wanted to sync again after a certain time, we could do it here
+     */
+    
+    /* If we don't want the mote to sync then we sould start the reception
+     * phase again in 1 cycle */
+    if (SYNC_STATES[mote_id] == S_NONE) {
+      long next_recep_time = reception_time + (11 + NS[mote_id]) * TIMES[mote_id];
+      log_startRecepTimer(mote_id, next_recep_time);
       
+      startTimer(mote_id, RECEP_PHASE, next_recep_time, PADDING_TICKS);
+    }
+    else {
+      long sync_time = reception_time + 11 * TIMES[mote_id];
+      log_startSyncTimer(mote_id, sync_time);
+
+      startTimer(mote_id, SYNC_PHASE, sync_time, -PADDING_TICKS);
+    }
+  }
+  
+  /** 
+   * Transmit a value to mote with power
+   * @param mote_id
+   * @param power An integer out of 63
+   */
+  private static void doTransmit(int mote_id, int power) {
+    byte pan_id = PANIDS[mote_id];
+    
     radio.setChannel(CHANNELS[mote_id]);
     radio.setPanId(pan_id, false);
     radio.startRx(Device.ASAP, 0, Time.currentTicks() + Time.toTickSpan(Time.SECONDS, 1));
@@ -465,25 +491,6 @@ public class Source {
     // but it currently stands at        0b0000000000111111
     power = power << 16-6;
     radio.transmit(Device.ASAP | power, xmit, 0, 12, 0);
-
-    /*
-     * If we wanted to sync again after a certain time, we could do it here
-     */
-    
-    /* If we don't want the mote to sync then we sould start the reception
-     * phase again in 1 cycle */
-    if (SYNC_STATES[mote_id] == S_NONE) {
-      long next_recep_time = reception_time + (11 + NS[mote_id]) * TIMES[mote_id];
-
-      log_startRecepTimer(mote_id, next_recep_time);
-      
-      startTimer(mote_id, RECEP_PHASE, next_recep_time, PADDING_TICKS);
-    }
-    else {
-      long sync_time = reception_time + 11 * TIMES[mote_id];
-      log_startSyncTimer(mote_id, sync_time);
-      startTimer(mote_id, SYNC_PHASE, sync_time, -PADDING_TICKS);
-    }
   }
   
   /**
